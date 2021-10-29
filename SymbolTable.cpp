@@ -75,10 +75,10 @@ bool isFunction(string lineValue){
         {
             string token = argList.substr(0, pos);
             argList.erase(0, pos + delimeter.length());
-            if (!isString(token) && !isNum(token))
+            if (!isString(token) && !isNum(token) && !validID(token))
                 return 0;
         }
-        if (!isString(argList) && !isNum(argList))
+        if (!isString(argList) && !isNum(argList) && !validID(argList))
             return 0;
     }
     return 1;
@@ -102,7 +102,7 @@ bool checkType(string type){
     while((pos = argList.find(delimeter)) != string::npos){
         string token = argList.substr(0,pos);
         argList.erase(0, pos + delimeter.length());
-        if (token != "number" && token != "string") 
+        if (token != "number" && token != "string")
             return 0;
     }
     if (argList != "number" && argList != "string")
@@ -111,7 +111,6 @@ bool checkType(string type){
         return 0;
     return 1;
 }
-
 void checkLineValid(string line, string action, string arg[])
 {
     if (action != "INSERT" && action != "ASSIGN" && action != "BEGIN"
@@ -131,10 +130,18 @@ void checkLineValid(string line, string action, string arg[])
         if (!isFunction(arg[2]) && !isNum(arg[2]) && !isString(arg[2]) && !validID(arg[2]))
             throw InvalidInstruction(line);
     }
+    else if(action == "BEGIN" || action == "END" || action == "PRINT"){
+        if (line != "BEGIN" && line != "END" && line != "PRINT") throw InvalidInstruction(line);
+    }
+    else if(action == "LOOKUP"){
+        string test = arg[0];
+        test += ' ' + arg[1];
+        if (line != test || !validID(arg[1]))
+            throw InvalidInstruction(line);
+    }
     //Check Variable and Value
-    
-}
 
+}
 void splitString(string line, string arg[])
 {
     regex reg(" +(?=(?:[^\']*\'[^\']*\')*[^\']*$)");
@@ -150,198 +157,98 @@ void splitString(string line, string arg[])
     }
 }
 
-void SymbolTable::zig(BinaryNode* x){
-    BinaryNode* p = x->parent;
-    if(p->left == x){
-        //BinaryNode* A = x->left;
-        BinaryNode* B = x->right;
-        //BinaryNode* C = p->right;
-
-        x->parent = nullptr;
-        x->right = p;
-
-        p->parent = x;
-        p->left = B;
-
-        if (B!= nullptr)
-            B->parent = p;
+void SymbolTable::leftRotate(BinaryNode* x){
+    BinaryNode* y = x->right;
+    x->right = y->left;
+    if(y->left != nullptr){
+        y->left->parent = x;
+    }
+    y->parent = x->parent;
+    if(x->parent == nullptr){
+        this->root = y;
+    }
+    else if(x == x->parent->left){
+        x->parent->left = y;
     }
     else{
-        //BinaryNode* A = p->left;
-        BinaryNode* B = x->left;
-        //BinaryNode* C = x->right;
-
-        x->parent = nullptr;
-        x->left = p;
-
-        p->parent = x;
-        p->right = B;
-
-        if (B != nullptr)
-            B->parent = p;
+        x->parent->right = y;
     }
+    y->left = x;
+    x->parent = y;
 }
-void SymbolTable::zig_zig(BinaryNode* x){
-    BinaryNode *p = x->parent;
-    BinaryNode *g = p->parent;
-    if (p->left == x)
-    {
-        //BinaryNode *A = x->left;
-        BinaryNode *B = x->right;
-        BinaryNode *C = p->right;
-        //BinaryNode *D = g->right;
-
-        x->parent = g->parent;
-        x->right = p;
-
-        p->parent = x;
-        p->left = B;
-        p->right = g;
-
-        g->parent = p;
-        g->left = C;
-
-        if (x->parent != NULL)
-        {
-            if (x->parent->left == g)
-                x->parent->left = x;
-            else
-                x->parent->right = x;
-        }
-
-        if (B != NULL)
-            B->parent = p;
-
-        if (C != NULL)
-            C->parent = g;
+void SymbolTable::rightRotate(BinaryNode* x){
+    BinaryNode* y = x->left;
+    x->left = y->right;
+    if(y->right != nullptr){
+        y->right->parent = x;
     }
-    else
-    {
-        //BinaryNode *A = g->left;
-        BinaryNode *B = p->left;
-        BinaryNode *C = x->left;
-        //BinaryNode *D = x->right;
-
-        x->parent = g->parent;
-        x->left = p;
-
-        p->parent = x;
-        p->left = g;
-        p->right = C;
-
-        g->parent = p;
-        g->right = B;
-
-        if (x->parent != NULL)
-        {
-            if (x->parent->left == g)
-                x->parent->left = x;
-            else
-                x->parent->right = x;
-        }
-
-        if (B != NULL)
-            B->parent = g;
-
-        if (C != NULL)
-            C->parent = p;
+    y->parent = x->parent;
+    if(x->parent == nullptr){
+        this->root = y;
     }
+    else if(x == x->parent->right){
+        x->parent->right = y;
+    }
+    else{
+        x->parent->left = y;
+    }
+    y->right = x;
+    x->parent = y;
 }
-void SymbolTable::zig_zag(BinaryNode* x){
-    BinaryNode *p = x->parent;
-    BinaryNode *g = p->parent;
-    if (p->right == x)
+void SymbolTable::splaying(BinaryNode *x, string name, int &scope, int &numcomp, int &numsplay)
+{
+    while (x->parent)
     {
-        //BinaryNode *A = p->left;
-        BinaryNode *B = x->left;
-        BinaryNode *C = x->right;
-        //BinaryNode *D = g->right;
-
-        x->parent = g->parent;
-        x->left = p;
-        x->right = g;
-
-        p->parent = x;
-        p->right = B;
-
-        g->parent = x;
-        g->left = C;
-
-        if (x->parent != NULL)
+        if (!x->parent->parent)
         {
-            if (x->parent->left == g)
-                x->parent->left = x;
+            if (x == x->parent->left)
+            {
+                // zig rotation
+                numsplay++;
+                rightRotate(x->parent);
+            }
             else
-                x->parent->right = x;
+            {
+                // zag rotation
+                numsplay++;
+                leftRotate(x->parent);
+            }
         }
-
-        if (B != NULL)
-            B->parent = p;
-
-        if (C != NULL)
-            C->parent = g;
-    }
-    else
-    {
-        //BinaryNode *A = g->left;
-        BinaryNode *B = x->left;
-        BinaryNode *C = x->right;
-        //BinaryNode *D = p->right;
-
-        x->parent = g->parent;
-        x->left = g;
-        x->right = p;
-
-        p->parent = x;
-        p->left = C;
-
-        g->parent = x;
-        g->right = B;
-
-        if (x->parent != NULL)
+        else if (x == x->parent->left && x->parent == x->parent->parent->left)
         {
-            if (x->parent->left == g)
-                x->parent->left = x;
-            else
-                x->parent->right = x;
-        }
-
-        if (B != NULL)
-            B->parent = g;
-
-        if (C != NULL)
-            C->parent = p;
-    }
-}
-void SymbolTable::splaying(BinaryNode* x, string name, int& scope, int& numcomp, int& numsplay){
-    while (x->parent != nullptr){
-        BinaryNode* p = x->parent;
-        BinaryNode* g = p->parent;
-
-        if(g == nullptr){
-            zig(x);
+            // zig-zig rotation
             numsplay++;
+            rightRotate(x->parent->parent);
+            rightRotate(x->parent);
         }
-        else if(g->left == p && p->left == x){
-            zig_zig(x);
+        else if (x == x->parent->right && x->parent == x->parent->parent->right)
+        {
+            // zag-zag rotation
             numsplay++;
+            leftRotate(x->parent->parent);
+            leftRotate(x->parent);
         }
-        else if(g->right == p && p->right == x){
-            zig_zig(x);
+        else if (x == x->parent->right && x->parent == x->parent->parent->left)
+        {
+            // zig-zag rotation
             numsplay++;
+            leftRotate(x->parent);
+            rightRotate(x->parent);
         }
-        else{
-            zig_zag(x);
+        else
+        {
+            // zag-zig rotation
             numsplay++;
+            rightRotate(x->parent);
+            leftRotate(x->parent);
         }
     }
-    this->root = x;
 }
 
 bool SymbolTable::isBigger(BinaryNode* a, BinaryNode* b){
     if (a->idNode == b->idNode && a->levelNode == b->levelNode && a->typeNode == b->typeNode)
         return false;
-    
+
     // Node a > Node b
     if (a->levelNode > b->levelNode)
         return true;
@@ -370,12 +277,15 @@ void SymbolTable::insert(BinaryNode *p, string name, string type, string conditi
     {
         root = new BinaryNode(name, type, condition, scope);
         cout << numcomp << ' ' << numsplay << endl;
+        numcomp = numsplay = 0;
         return;
     }
 
     if (p->idNode == name && p->levelNode == scope && p->typeNode == type)
     {
-        cout << numcomp << ' ' << numsplay << endl;
+        // numcomp = numsplay = 1;
+        cout << 1 << ' ' << 0 << endl;
+        numcomp = numsplay = 0;
         return;
     }
 
@@ -414,6 +324,7 @@ void SymbolTable::insert(BinaryNode *p, string name, string type, string conditi
                 temp = temp->right;
             }
             else {
+                // numcomp++;
                 splaying(temp, name, scope, numcomp, numsplay);
                 cout << numcomp << ' ' << numsplay << endl;
                 return;
@@ -427,213 +338,474 @@ void SymbolTable::insert(BinaryNode *p, string name, string type, string conditi
     return;
 }
 
-BinaryNode* SymbolTable::search(string line, string name, int& scope, int& numcomp, int& numsplay){
-    BinaryNode* ret = nullptr;
-    BinaryNode* curr = this->root;
-    BinaryNode* prev = nullptr;
-
-    while(curr != nullptr){
-        prev = curr;
-        if (name.compare(curr->idNode) < 0){
-            numcomp++;
-            curr = curr->left;
+void SymbolTable::inTree(BinaryNode* root, string name, BinaryNode*& toFind){
+    if(root != nullptr){
+        if (root->idNode == name){
+            toFind = root;
+            return;
         }
-        else if (name.compare(curr->idNode) > 0) {
-            numcomp++;
-            curr = curr->right;
-        } 
-        else {
+        inTree(root->right, name, toFind);
+        inTree(root->left, name, toFind);
+    }
+}
+BinaryNode* SymbolTable::search(string line, string name, int& scope, int& numcomp, int& numsplay){
+    BinaryNode *ret = nullptr;
+    BinaryNode *curr = this->root;
+    BinaryNode *prev = nullptr;
+
+    if (this->root == nullptr)
+        throw Undeclared(line);
+
+    BinaryNode *toSearch = nullptr;
+    inTree(root, name, toSearch);
+    // if(toSearch == nullptr) cout << "NULL\n";
+    if(toSearch == nullptr) return nullptr;
+    // cout << toSearch->idNode << "//" << toSearch->typeNode << endl;
+
+    while (curr != nullptr)
+    {
+        prev = curr;
+        if (toSearch->idNode == curr->idNode)
+        {
             numcomp++;
             ret = curr;
             break;
         }
+        else if (!isBigger(toSearch, curr))   // if toSearch < curr
+        {
+            numcomp++;
+            curr = curr->left;
+        }
+        else if (isBigger(toSearch, curr))  // if toSearch > curr
+        {
+            numcomp++;
+            curr = curr->right;
+        }
     }
-    if (ret != nullptr){
-        //numsplay++;
-        // cout << "Here: " << ret->idNode << endl;
+
+    if (ret != nullptr)
+    {
         splaying(ret, name, scope, numcomp, numsplay);
     }
-    else if (prev != nullptr){
-        //numsplay++;
-        // cout << prev->idNode << endl;
+    else if (prev != nullptr)
+    {
         splaying(prev, name, scope, numcomp, numsplay);
     }
-    else throw Undeclared(line);
-    //cout << numcomp << ' ' << numsplay << endl;
-    //numcomp = numsplay = 0;
+
     return ret;
 }
 void SymbolTable::assign(BinaryNode* root, string line, string name, string value, int& scope, int& numcomp, int& numsplay){
+    /* ASSIGN <ret(Var)> <toAssign(Val)> */
+
     string lineValue = value;
-    if(value.find("(") != string::npos){
+    if (value.find("(") != string::npos)  // Split List of parameter: sum(a,b) ---> a,b
+    {
         string delimeter = "(";
         size_t pos = value.find(delimeter);
         value = value.substr(0, pos);
-        lineValue = lineValue.substr(pos+1,(lineValue.size()-2 - pos));
+        lineValue = lineValue.substr(pos + 1, (lineValue.size() - 2 - pos));
     }
-    // cout << lineValue << endl;
-    BinaryNode* toAssign = search(line, value, scope, numcomp, numsplay);
-    BinaryNode* ret = search(line, name, scope, numcomp, numsplay);
-    // cout << toAssign->typeNode << ' ' << ret->typeNode << endl;
+
+    if (this->root == nullptr)
+        throw Undeclared(line);
+
+    BinaryNode* ret = nullptr;
+    BinaryNode* toAssign = nullptr;
+    if (validID(value))
+        toAssign = search(line, value, scope, numcomp, numsplay);
+    if (validID(name))
+        ret = search(line, name, scope, numcomp, numsplay);
+
+    if (!toAssign && !ret && validID(value) && validID(name)) throw Undeclared(line);   //if both are ID and not declared
+    if (validID(value) && !ret) throw Undeclared(line);     // if value is a ID and not declared
+    // cout << ret->idNode << ' ' << toAssign->idNode << endl;
+    // if ((toAssign && !toAssign->typeNode.find("->")) || !ret)  // if val's declared and is not a function type
+    //     throw Undeclared(line);
 
     string delimeter = "->";
     size_t posVar = string::npos;
-    if (ret !=nullptr) posVar = ret->typeNode.find(delimeter);
     size_t posVal = string::npos;
-    if (toAssign != nullptr) posVal = toAssign->typeNode.find(delimeter);
-    // cout << posVal << ' ' << posVar;
-    // If var is name of function and value is a function
-    if (posVal != string::npos && posVar != string::npos){
-        // If line is ASSIGN <ID (of a function)> <function>
-        //cout << "here\n";
-        string typeVal = toAssign->typeNode.substr(posVal+2,toAssign->typeNode.size());
-        string typeVar = ret->typeNode.substr(posVar+2, ret->typeNode.size());
-        if (typeVal != typeVar) throw TypeMismatch(line);
-        //string ListParaVar = ret->typeNode.substr(1, posVar-2);
-        string ListParaVal = toAssign->typeNode.substr(1,posVal-2);
-        // cout << ListParaVal  << "\n"  << lineValue << endl;
-        string delimeter = ",";
-        size_t pos1 , pos2;
-        while(((pos1 = ListParaVal.find(delimeter)) != string::npos) && ((pos2 = lineValue.find(delimeter)) != string::npos)){
-            string parameter = ListParaVal.substr(0,pos1);
-            string value = lineValue.substr(0, pos2);
-            // cout << "Here: " << parameter <<' ' << value << endl;
-            if (parameter == "number" && !isNum(value))
-                throw TypeMismatch(line);
-            else if(parameter == "string" && !isString(value))
-                throw TypeMismatch(line);
-            else{
-                ListParaVal.erase(0, pos1 + delimeter.length());
-                lineValue.erase(0, pos2+delimeter.length());
-            }
-        }
-        if (ListParaVal == "number" && !isNum(lineValue))
-            throw TypeMismatch(line);
-        else if (ListParaVal == "string" && !isString(lineValue))
-            throw TypeMismatch(line);
-        // cout << ListParaVal << ' ' << lineValue << endl;
-        // cout << type << endl;
-    }
-    else if(posVal != string::npos){
-        /* If line is: ASSIGN <ID(not ID of a function)> <function> */
-        // cout << "Here";
-        string typeVal = toAssign->typeNode.substr(posVal+2,toAssign->typeNode.size());
-        if (ret != nullptr && typeVal != ret->typeNode) throw TypeMismatch(line);
-        string ListParaVal = toAssign->typeNode.substr(1,posVal-2);
-        // cout << ListParaVal  << "\n"  << lineValue << endl;
-        string delimeter = ",";
-        size_t pos1 = string::npos, pos2 = string::npos;
-        while(((pos1 = ListParaVal.find(delimeter)) != string::npos) && ((pos2 = lineValue.find(delimeter)) != string::npos)){ 
-            string parameter = ListParaVal.substr(0,pos1);
-            string value = lineValue.substr(0, pos2);
-            // cout << "Here: " << parameter <<' ' << value << endl;
-            if (parameter == "number" && !isNum(value))
-                throw TypeMismatch(line);
-            else if(parameter == "string" && !isString(value))
-                throw TypeMismatch(line);
-            else{
-                lineValue.erase(0, pos2 + delimeter.length());
-                ListParaVal.erase(0, pos1 + delimeter.length());
+    if (ret != nullptr)
+        posVar = ret->typeNode.find(delimeter);
+    if (toAssign != nullptr)
+        posVal = toAssign->typeNode.find(delimeter);
 
-            }
-        }
-        // cout << "here: " << lineValue << ' ' << ListParaVal << endl;
-        if (ListParaVal == "number" && !isNum(lineValue))
-            throw TypeMismatch(line);
-        else if (ListParaVal == "string" && !isString(lineValue))
-            throw TypeMismatch(line);
-        else if ((ListParaVal == "" && lineValue != "") || (ListParaVal != "" && lineValue == ""))
-            throw TypeMismatch(line);
-    }
-    else if(posVar != string::npos){
-        //cout << "here\n";
-        string typeVar = ret->typeNode.substr(posVar+2, ret->typeNode.size());
-        // cout << typeVar << endl;
-        // cout << toAssign->typeNode << endl;
-        if (toAssign != nullptr && typeVar != toAssign->typeNode) throw TypeMismatch(line);
-        else if (toAssign == nullptr && ((typeVar == "number" && !isNum(value)) || (typeVar == "string" && !isString(value))))
-            throw TypeMismatch(line);
-    }
-    else if(ret->typeNode != toAssign->typeNode) throw TypeMismatch(line);
-    else if((ret->typeNode == "number" && !isNum(value)) || (ret->typeNode == "string" && !isString(value))){
+    if (posVar != string::npos)     // If var is name of function and value is a function
+    {
         // cout << "Here\n";
         throw TypeMismatch(line);
     }
-    // if (toAssign == nullptr) cout << "NULL" << endl;
-    // cout << ret->typeNode << endl;
+
+    if (ret && toAssign)
+    {
+        if (posVal == string::npos && posVar == string::npos)   // if both is variable and same type (except type function)
+        { 
+            if (ret->typeNode == toAssign->typeNode)
+            {
+                cout << numcomp << ' ' << numsplay << endl;
+                numcomp = numsplay = 0;
+                return;
+            }
+        }
+    }
+
+    if (validID(name) && validID(value))  // if <name> and <value> are both ID. <name> maybe is not declared, so that we check ID is valid
+    {
+        if (posVal != string::npos)    /* If line is: ASSIGN <ID(not ID of a function)> <function> */
+        {
+            // cout << "Here";  // Check List of parameter pass in function call is same type as argument in function def
+            string typeVal = toAssign->typeNode.substr(posVal + 2, toAssign->typeNode.size());
+            if (ret != nullptr && typeVal != ret->typeNode)
+                throw TypeMismatch(line);
+
+            string ListParaVal = toAssign->typeNode.substr(1, posVal - 2);
+            string delimeter = ",";
+            size_t pos1 = string::npos, pos2 = string::npos;
+            while (((pos1 = ListParaVal.find(delimeter)) != string::npos) && ((pos2 = lineValue.find(delimeter)) != string::npos))
+            {
+                string parameter = ListParaVal.substr(0, pos1);
+                string value = lineValue.substr(0, pos2);
+                // cout << "Here: " << parameter <<' ' << value << endl;
+
+                // if in argument List of ID has type "number"
+                if (parameter == "number"){
+                    // if value pass in parameter is not a number
+                    if(!isNum(value)){
+                        // if it is a valid ID, then check it is declared?
+                        if(validID(value)){
+                            BinaryNode* val = search(line,value,scope,numcomp,numsplay);
+                            if(val == nullptr) throw Undeclared(line);
+                            if(val->typeNode.find("->") != string::npos){
+                                size_t posPara = val->typeNode.find("->");
+                                string type = val->typeNode.substr(posPara + 2, val->typeNode.size());
+                                if (type != parameter) throw TypeMismatch(line);
+                            }
+                        }
+                        else    // if not, throw
+                            throw TypeMismatch(line);
+                    }
+                }
+                // if in argument List of ID (in INSERT) has type "string"
+                else if (parameter == "string"){
+                    // if value pass in parameter (in ASSIGN) is not a string
+                    if(!isString(value)){
+                        // if it is a valid ID, then check if it is declared?
+                        if(validID(value)){
+                            BinaryNode* val = search(line,value,scope,numcomp,numsplay);
+                            if(val == nullptr) throw Undeclared(line);
+                            if(val->typeNode.find("->") != string::npos){
+                                size_t posPara = val->typeNode.find("->");
+                                string type = val->typeNode.substr(posPara + 2, val->typeNode.size());
+                                if (type != parameter) throw TypeMismatch(line);
+                            }
+                        }
+                        else    // if not, throw
+                            throw TypeMismatch(line);
+                    }
+                }
+
+                lineValue.erase(0, pos2 + delimeter.length());
+                ListParaVal.erase(0, pos1 + delimeter.length());
+            }
+            // cout << "here: " << lineValue << ' ' << ListParaVal << endl;
+            if (ListParaVal == "number"){
+                if (!isNum(lineValue)){
+                    if (validID(lineValue))
+                    {
+                        BinaryNode *val = search(line, lineValue, scope, numcomp, numsplay);
+                        if (val == nullptr)
+                            throw Undeclared(line);
+                        if (val->typeNode.find("->") != string::npos)
+                        {
+                            size_t posPara = val->typeNode.find("->");
+                            string type = val->typeNode.substr(posPara + 2, val->typeNode.size());
+                            if (type != ListParaVal)
+                                throw TypeMismatch(line);
+                        }
+                    }
+                    else
+                        throw TypeMismatch(line);
+                }
+            }
+            else if (ListParaVal == "string")
+            {
+                if (!isString(lineValue))
+                {
+                    if (validID(lineValue))
+                    {
+                        BinaryNode *val = search(line, lineValue, scope, numcomp, numsplay);
+                        if (val == nullptr)
+                            throw Undeclared(line);
+                        if (val->typeNode.find("->") != string::npos)
+                        {
+                            size_t posPara = val->typeNode.find("->");
+                            string type = val->typeNode.substr(posPara + 2, val->typeNode.size());
+                            if (type != ListParaVal)
+                                throw TypeMismatch(line);
+                        }
+                    }
+                    else
+                        throw TypeMismatch(line);
+                }
+            }
+            else if ((ListParaVal == "" && lineValue != "") || (ListParaVal != "" && lineValue == ""))
+                throw TypeMismatch(line);
+        }
+        else if (ret->typeNode != toAssign->typeNode) // if both ID are not function and not same type
+        {
+            // cout << "Here";
+            throw TypeMismatch(line);
+        }
+    }
+    
+    else if ((ret->typeNode == "number" && !isNum(value)) || (ret->typeNode == "string" && !isString(value))) // if (<name> is ID and found) and <value> is value
+    {
+        // cout << "Here\n";
+        throw TypeMismatch(line);
+    }
+
     cout << numcomp << ' ' << numsplay << endl;
     numcomp = numsplay = 0;
     return;
 }
 
-BinaryNode* SymbolTable::searchScope(int &scope){
+BinaryNode* SymbolTable::searchScope(string line, string name, int& scope, int& numcomp, int& numsplay){
     BinaryNode* curr = this->root;
+    BinaryNode* ret = nullptr;
+    // BinaryNode* prev = nullptr;
+    bool isFound = 0;
     while(curr != nullptr){
-
+        // prev = curr;
+        // if (scope < curr->levelNode) curr = curr->right;
+        // else if(scope > curr->levelNode) curr = curr->left;
+        if (scope == curr->levelNode) {
+            ret = curr;
+            isFound = 1;
+            break;
+        }
+        curr = curr->left;
     }
-    return curr;
+    if (!isFound){
+        curr = root;
+        // prev = nullptr;
+        while (curr != nullptr)
+        {
+            // prev = curr;
+            // if (scope < curr->levelNode) curr = curr->right;
+            // else if(scope > curr->levelNode) curr = curr->left;
+            if (scope == curr->levelNode)
+            {
+                ret = curr;
+                // isFound = 1;
+                break;
+            }
+            curr = curr->right;
+        }
+    }
+    return ret;
 }
 BinaryNode* SymbolTable::subtreeMax(BinaryNode* subRoot){
-    BinaryNode* curr = subRoot;
-    while(curr->right != nullptr)
-        curr = curr->right;
-    return curr;
+    while(subRoot->right != nullptr)
+        subRoot = subRoot->right;
+    return subRoot;
 }
-BinaryNode* SymbolTable::subtreeMin(BinaryNode* subRoot){
-    BinaryNode* curr = subRoot;
-    while (curr->left != NULL)
-        curr = curr->left;
-    return curr; 
-}
-void SymbolTable::getOut(string name, int& scope){
 
+void SymbolTable::split(BinaryNode* &x, BinaryNode* &s, BinaryNode* &t, string name, int& scope, int& numcomp, int& numsplay){
+    splaying(x, name, scope, numcomp, numsplay);
+    if (x->right){
+        t = x->right;
+        t->parent = nullptr;
+    }
+    else{
+        t = nullptr;
+    }
+    s = x;
+    s->right = nullptr;
+    x = nullptr;
+}
+BinaryNode* SymbolTable::join(BinaryNode* s, BinaryNode* t, string name, int& scope, int& numcomp, int& numsplay){
+    if(!s) return t;
+    if(!t) return s;
+    BinaryNode* x = subtreeMax(s);
+    splaying(x, name, scope, numcomp, numsplay);
+    x->right = t;
+    t->parent = x;
+    return x;
+}
+
+void SymbolTable::getOut(string line, string name, int& scope, int& numcomp, int& numsplay){
+    BinaryNode* x = nullptr;
+    while((x = searchScope(line, name, scope, numcomp, numsplay)) != nullptr){
+        BinaryNode *t;
+        BinaryNode *s;
+        if (x == nullptr)
+        {
+            numcomp = numsplay = 0;
+            return;
+        }
+        split(x, s, t, name, scope, numcomp, numsplay);
+
+        if (s->left)
+        {
+            s->left->parent = nullptr;
+        }
+        root = join(s->left, t, name, scope, numcomp, numsplay);
+
+        delete s;
+        s = nullptr;
+        numcomp = numsplay = 0;
+    }
+}
+
+void SymbolTable::lookUp(string line, string name, int& scope, int& numcomp, int& numsplay){
+    BinaryNode *ret = nullptr;
+    BinaryNode *curr = this->root;
+    BinaryNode *prev = nullptr;
+
+    if (this->root == nullptr)
+        throw Undeclared(line);
+
+    BinaryNode *toSearch = nullptr;
+    inTree(root, name, toSearch);
+
+    if(toSearch == nullptr) throw Undeclared(line);
+
+    while (curr != nullptr)
+    {
+        prev = curr;
+        if (toSearch->idNode == curr->idNode)
+        {
+            numcomp++;
+            ret = curr;
+            break;
+        }
+        else if (!isBigger(toSearch, curr))   // if toSearch < curr
+        {
+            numcomp++;
+            curr = curr->left;
+        }
+        else if (isBigger(toSearch, curr))  // if toSearch > curr
+        {
+            numcomp++;
+            curr = curr->right;
+        }
+    }
+
+
+    if (ret != nullptr) splaying(ret, name, scope, numcomp, numsplay);
+    else if (prev != nullptr) splaying(prev, name, scope, numcomp, numsplay);
+
+    if(ret == nullptr) throw Undeclared(line);
+    else cout << ret->levelNode << endl;
+
+    numcomp = numsplay = 0;
 }
 
 void SymbolTable::inOrder(BinaryNode* root){
     if (root != nullptr)
     {
         inOrder(root->left);
-        cout << root->idNode << root->typeNode << ' ';
+        cout << root->idNode << "//" << root->levelNode << ' ';
         inOrder(root->right);
     }
+}
+
+void SymbolTable::preOrder(BinaryNode* root, string& res){
+    if (root != nullptr)
+    {
+        res += root->idNode; res += "//"; res += to_string(root->levelNode); res += ' ';
+        preOrder(root->left, res);
+        preOrder(root->right, res);
+    }
+}
+void SymbolTable::printPre(string& res){
+    this->preOrder(this->root, res);
+    res = res.substr(0, res.size() - 1);
+    cout << res;
+}
+
+void SymbolTable::clear(BinaryNode* root){
+    if(root == nullptr) return;
+
+    clear(root->left);
+    clear(root->right);
+    delete root;
+}
+SymbolTable::~SymbolTable(){
+    this->clear(root);
 }
 
 void SymbolTable::run(string filename)
 {
     ifstream file;
     file.open(filename);
-    
+
     int scope = 0, numsplay = 0, numcomp = 0;
+    int beginCount = 0, endCount = 0;
     string line;
-    while (getline(file, line))
+    while (!file.eof())
     {
+        getline(file, line);
         string parameter[4];
         splitString(line, parameter);
         string action = parameter[0];
         checkLineValid(line, action, parameter);
+
         if (action == "INSERT"){
-            //cout << parameter[1] << ' ' << scope << endl;
             if (!isNotDuplicate(root, parameter[1], scope))
                 throw Redeclared(line);
-            else if(scope != 0 && parameter[2].find("->") != string::npos)
+            else if(scope != 0 && parameter[2].find("->") != string::npos && parameter[3] != "true")
                 throw InvalidDeclaration(line);
-            else 
+            else
                 this->insert(root, parameter[1], parameter[2], parameter[3], scope, numcomp, numsplay);
         }
         else if (action == "ASSIGN"){
             this->assign(root, line, parameter[1], parameter[2], scope, numcomp, numsplay);
         }
         else if (action == "BEGIN"){
+            beginCount++;
             scope++;
         }
         else if (action == "END"){
+            beginCount--;
+            endCount++;
+            if (beginCount == 0) endCount = 0;
+            if (beginCount < 0) throw UnknownBlock(); // End when there is no Begin
+            getOut(line ,"", scope, numcomp, numsplay);
             scope--;
+            numcomp = numsplay = 0;
         }
-        else if (action == "LOOKUP"){}
-        else if (action == "PRINT"){}
-        //cout << parameter[0]
+        else if (action == "LOOKUP"){
+            this->lookUp(line, parameter[1], scope, numcomp, numsplay);
+        }
+        else if (action == "PRINT"){
+            string res = "";
+            this->printPre(res);
+            if (this->root != nullptr) cout << endl;
+        }
     }
-    //this->inOrder(root);
+
+    if (beginCount == 0)
+    {
+        //cout << beginCount << " " << endCount << " ";
+        return;
+    }
+    else if (beginCount > 0)
+        throw UnclosedBlock(beginCount);
+    if (beginCount < endCount)
+    {
+        //cout << beginCount << " " << endCount << " ";
+        //cout << "Here 2";
+        throw UnknownBlock();
+    }
+    else if (beginCount >= endCount)
+    {
+        throw UnclosedBlock(beginCount);
+    }
+    else
+    {
+        return;
+    }
     return;
 }
 

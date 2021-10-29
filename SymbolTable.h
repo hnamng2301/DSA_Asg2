@@ -30,27 +30,29 @@ public:
 
 class SymbolTable
 {
-    static int scope;
     BinaryNode* root;
 public:
     SymbolTable();  // Constructor
-    //~SymbolTable(); // Destructor
-    void zig(BinaryNode*);
-    void zig_zig(BinaryNode*);
-    void zig_zag(BinaryNode*);
+    ~SymbolTable(); // Destructor
+    void leftRotate(BinaryNode*);
+    void rightRotate(BinaryNode*);
     void splaying(BinaryNode*, string, int&, int&, int&);
-    BinaryNode* findNode(BinaryNode*, int);
     bool isBigger(BinaryNode*, BinaryNode*);
-    BinaryNode* remove(BinaryNode*, int);
-    void inOrder(BinaryNode*);
     bool isNotDuplicate(BinaryNode*, string, int);
     void insert(BinaryNode*, string, string, string, int&, int&, int&);
+    void inTree(BinaryNode*, string, BinaryNode*&);
     BinaryNode* search(string, string, int&, int&, int&);
     void assign(BinaryNode*, string, string, string, int&, int&, int&);
-    BinaryNode* searchScope(int& scope);
+    BinaryNode* searchScope(string, string, int&, int&, int&);
     BinaryNode* subtreeMax(BinaryNode*);
-    BinaryNode* subtreeMin(BinaryNode*);
-    void getOut(string, int&);
+    void split(BinaryNode*&, BinaryNode*&, BinaryNode *&, string, int&, int&, int&);
+    BinaryNode* join(BinaryNode*, BinaryNode*, string, int&, int&, int&);
+    void getOut(string, string, int&, int&, int&);
+    void lookUp(string, string, int&, int&, int&);
+    void inOrder(BinaryNode*);
+    void preOrder(BinaryNode*, string&);
+    void printPre(string& res);
+    void clear(BinaryNode*);
     void run(string filename);  // Main function
 };
 
@@ -61,7 +63,6 @@ bool validID(string lineName);                      // Check variable's is valid
 bool isNum(string lineValue);                       // Check value to assign is valid number
 bool isString(string lineValue);                    // Check value to assign is valid string
 bool checkType(string type);                        // Check type is valid
-int SymbolTable::scope = 0;
 
 // This is end of Assignment. Good luck.
 #endif
