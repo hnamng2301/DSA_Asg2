@@ -14,7 +14,8 @@ bool validID(string lineName)
     { // Phai bat dau bang ky tu thuong
         for (unsigned int i = 0; i < lineName.size(); i++)
         {
-            if ((lineName[i] >= 'A' && lineName[i] <= 'Z') || (lineName[i] >= 'a' && lineName[i] <= 'z') || (lineName[i] >= '0' && lineName[i] <= '9') || lineName[i] == '_')
+            if ((lineName[i] >= 'A' && lineName[i] <= 'Z') || (lineName[i] >= 'a' && lineName[i] <= 'z') 
+                || (lineName[i] >= '0' && lineName[i] <= '9') || lineName[i] == '_')
                 continue;
             else
                 return false;
@@ -197,6 +198,8 @@ void SymbolTable::rightRotate(BinaryNode* x){
 }
 void SymbolTable::splaying(BinaryNode *x, string name, int &scope, int &numcomp, int &numsplay)
 {
+    // cout << "Splay: " << numcomp << ' ' << numsplay << endl;
+    // numsplay = 0;
     while (x->parent)
     {
         if (!x->parent->parent)
@@ -204,44 +207,45 @@ void SymbolTable::splaying(BinaryNode *x, string name, int &scope, int &numcomp,
             if (x == x->parent->left)
             {
                 // zig rotation
-                numsplay++;
+                // numsplay++;
                 rightRotate(x->parent);
             }
             else
             {
                 // zag rotation
-                numsplay++;
+                // numsplay++;
                 leftRotate(x->parent);
             }
         }
         else if (x == x->parent->left && x->parent == x->parent->parent->left)
         {
             // zig-zig rotation
-            numsplay++;
+            // numsplay++;
             rightRotate(x->parent->parent);
             rightRotate(x->parent);
         }
         else if (x == x->parent->right && x->parent == x->parent->parent->right)
         {
             // zag-zag rotation
-            numsplay++;
+            // numsplay++;
             leftRotate(x->parent->parent);
             leftRotate(x->parent);
         }
         else if (x == x->parent->right && x->parent == x->parent->parent->left)
         {
             // zig-zag rotation
-            numsplay++;
+            // numsplay++;
             leftRotate(x->parent);
             rightRotate(x->parent);
         }
         else
         {
             // zag-zig rotation
-            numsplay++;
+            // numsplay++;
             rightRotate(x->parent);
             leftRotate(x->parent);
         }
+        numsplay++;
     }
 }
 
@@ -272,6 +276,7 @@ bool SymbolTable::isNotDuplicate(BinaryNode* root, string name, int scope){
 
 void SymbolTable::insert(BinaryNode *p, string name, string type, string condition, int &scope, int &numcomp, int &numsplay)
 {
+    // cout << "INSERT: " << numcomp << ' ' << numsplay << endl;
     // First, insert value to Tree as BST Tree
     if (this->root == nullptr)
     {
@@ -284,7 +289,7 @@ void SymbolTable::insert(BinaryNode *p, string name, string type, string conditi
     if (p->idNode == name && p->levelNode == scope && p->typeNode == type)
     {
         // numcomp = numsplay = 1;
-        cout << 1 << ' ' << 0 << endl;
+        cout << numcomp << ' ' << numsplay << endl;
         numcomp = numsplay = 0;
         return;
     }
@@ -292,6 +297,7 @@ void SymbolTable::insert(BinaryNode *p, string name, string type, string conditi
     else
     {
         BinaryNode *newNode = new BinaryNode(name, type, condition, scope);
+        // cout << newNode->idNode << "//" << newNode->levelNode << endl;
         BinaryNode *temp = root;
         while (temp != nullptr)
         {
@@ -331,8 +337,38 @@ void SymbolTable::insert(BinaryNode *p, string name, string type, string conditi
             }
         }
     }
+/*
+    BinaryNode* newNode = new BinaryNode(name, type, condition, scope);
+    BinaryNode* y = nullptr;
+    BinaryNode* x = this->root;
 
-    // Finally, print <numcomp><numsplay>
+    while(x != nullptr){
+        y = x;
+        if (isBigger(x,newNode)){
+            numcomp++;
+            x = x->left;
+        }
+        else {
+            numcomp++;
+            x = x->right;
+        }
+    }
+    newNode->parent = y;
+    if(y == nullptr){
+        root = newNode;
+        // numcomp++;
+    }
+    else if (isBigger(y,newNode)){
+        numcomp++;
+        y->left = newNode;
+    }
+    else{
+        // numcomp++;
+        y->right = newNode;
+    }
+    splaying(newNode, name, scope, numcomp, numsplay);
+*/
+    // Finally, print <numcomp> <numsplay>
     cout << numcomp << ' ' << numsplay << endl;
     numcomp = numsplay = 0;
     return;
@@ -395,10 +431,10 @@ BinaryNode* SymbolTable::search(string line, string name, int& scope, int& numco
     return ret;
 }
 void SymbolTable::assign(BinaryNode* root, string line, string name, string value, int& scope, int& numcomp, int& numsplay){
-    /* ASSIGN <ret(Var)> <toAssign(Val)> */
-
+    /* ASSIGN <name> <value> */
+    // cout << "ASSIGN: " << numcomp << ' ' << numsplay << endl;
     string lineValue = value;
-    if (value.find("(") != string::npos)  // Split List of parameter: sum(a,b) ---> a,b
+    if (value.find("(") != string::npos)  // Take List of parameter: sum(a,b) ---> a,b
     {
         string delimeter = "(";
         size_t pos = value.find(delimeter);
@@ -416,11 +452,8 @@ void SymbolTable::assign(BinaryNode* root, string line, string name, string valu
     if (validID(name))
         ret = search(line, name, scope, numcomp, numsplay);
 
-    if (!toAssign && !ret && validID(value) && validID(name)) throw Undeclared(line);   //if both are ID and not declared
-    if (validID(value) && !ret) throw Undeclared(line);     // if value is a ID and not declared
-    // cout << ret->idNode << ' ' << toAssign->idNode << endl;
-    // if ((toAssign && !toAssign->typeNode.find("->")) || !ret)  // if val's declared and is not a function type
-    //     throw Undeclared(line);
+    if (!toAssign && !ret && validID(value) && validID(name)) throw Undeclared(line);   // if both are ID and not declared
+    if (validID(value) && !toAssign) throw Undeclared(line);     // if value is a ID and not declared
 
     string delimeter = "->";
     size_t posVar = string::npos;
@@ -430,13 +463,13 @@ void SymbolTable::assign(BinaryNode* root, string line, string name, string valu
     if (toAssign != nullptr)
         posVal = toAssign->typeNode.find(delimeter);
 
-    if (posVar != string::npos)     // If var is name of function and value is a function
+    if (posVar != string::npos)     // If name is ID of function and is a function's ID
     {
         // cout << "Here\n";
         throw TypeMismatch(line);
     }
 
-    if (ret && toAssign)
+    if (ret && toAssign)    // if both are ID 
     {
         if (posVal == string::npos && posVar == string::npos)   // if both is variable and same type (except type function)
         { 
@@ -448,10 +481,10 @@ void SymbolTable::assign(BinaryNode* root, string line, string name, string valu
             }
         }
     }
-
-    if (validID(name) && validID(value))  // if <name> and <value> are both ID. <name> maybe is not declared, so that we check ID is valid
+    // cout << "Null\n";
+    if (validID(name) && validID(value))  // if <name> and <value> are both ID. <name> maybe is not declared.
     {
-        if (posVal != string::npos)    /* If line is: ASSIGN <ID(not ID of a function)> <function> */
+        if (toAssign && posVal != string::npos)    /* If line is: ASSIGN <ID(not ID of a function)> <function call> */
         {
             // cout << "Here";  // Check List of parameter pass in function call is same type as argument in function def
             string typeVal = toAssign->typeNode.substr(posVal + 2, toAssign->typeNode.size());
@@ -550,16 +583,22 @@ void SymbolTable::assign(BinaryNode* root, string line, string name, string valu
             }
             else if ((ListParaVal == "" && lineValue != "") || (ListParaVal != "" && lineValue == ""))
                 throw TypeMismatch(line);
+
+            else if (!ret) throw Undeclared(line);  // if function in value is OK, check <name>ID
         }
-        else if (ret->typeNode != toAssign->typeNode) // if both ID are not function and not same type
+        else if (ret && toAssign && ret->typeNode != toAssign->typeNode)  /* If line is: ASSIGN <ID (not ID if a function)> <ID (not ID of a function)> */
         {
+            // if both ID are not function and not same type
             // cout << "Here";
             throw TypeMismatch(line);
         }
+        else throw Undeclared(line);
     }
     
-    else if ((ret->typeNode == "number" && !isNum(value)) || (ret->typeNode == "string" && !isString(value))) // if (<name> is ID and found) and <value> is value
+    else if ((ret->typeNode == "number" && !isNum(value)) 
+            || (ret->typeNode == "string" && !isString(value))) /* If line is: ASSIGN <ID (not ID of a function)> <value> */
     {
+        // if (<name> is ID and found) and <value> is value
         // cout << "Here\n";
         throw TypeMismatch(line);
     }
@@ -787,15 +826,12 @@ void SymbolTable::run(string filename)
 
     if (beginCount == 0)
     {
-        //cout << beginCount << " " << endCount << " ";
         return;
     }
     else if (beginCount > 0)
         throw UnclosedBlock(beginCount);
     if (beginCount < endCount)
     {
-        //cout << beginCount << " " << endCount << " ";
-        //cout << "Here 2";
         throw UnknownBlock();
     }
     else if (beginCount >= endCount)
