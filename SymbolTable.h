@@ -24,7 +24,6 @@ public:
         if (condition == "true") levelNode = 0;
         else levelNode = level;
     }
-    friend class SplayTree;
     friend class SymbolTable;
 };
 
@@ -38,7 +37,7 @@ public:
     void rightRotate(BinaryNode*);
     void splaying(BinaryNode*, string, int&, int&, int&);
     bool isBigger(BinaryNode*, BinaryNode*);                                // Compare 2 nodes <a> and <b>, return true if a > b
-    bool isNotDuplicate(BinaryNode*, string, int);                          // Check a <Name> if it is declared
+    void isNotDuplicate(BinaryNode*, string, int, bool&);                          // Check a <Name> if it is declared
     void insert(BinaryNode*, string, string, string, int&, int&, int&);     // Insert task
     void inTree(BinaryNode*, string, BinaryNode*&);                         // Support for assign, return a node has name to Assign
     BinaryNode* search(string, string, int&, int&, int&);                   // Search node which found in inTree, show numcomp and numsplay of Assign
